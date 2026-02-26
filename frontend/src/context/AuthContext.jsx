@@ -100,26 +100,38 @@ export const AuthProvider = ({ children }) => {
 
     // ─── Wallet: Transfer ───
     const transferMoney = async (recipientEmail, amount, description) => {
-        const { data } = await api.post('/wallet/transfer', {
-            recipientEmail,
-            amount: parseFloat(amount),
-            description,
-        });
-        if (data.data.transaction.status === 'flagged') {
-            toast('Transfer flagged for review', { icon: '⚠️' });
-        } else {
-            toast.success(`$${amount} sent successfully!`);
+        try {
+            const { data } = await api.post('/wallet/transfer', {
+                recipientEmail,
+                amount: parseFloat(amount),
+                description,
+            });
+            if (data.data.transaction.status === 'flagged') {
+                toast('Transfer flagged for review', { icon: '⚠️' });
+            } else {
+                toast.success(`$${amount} sent successfully!`);
+            }
+            return data.data;
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Transfer failed';
+            toast.error(msg);
+            throw err;
         }
-        return data.data;
     };
 
     // ─── Wallet: Deposit ───
     const depositMoney = async (amount) => {
-        const { data } = await api.post('/wallet/deposit', {
-            amount: parseFloat(amount),
-        });
-        toast.success(`$${amount} deposited!`);
-        return data.data;
+        try {
+            const { data } = await api.post('/wallet/deposit', {
+                amount: parseFloat(amount),
+            });
+            toast.success(`$${amount} deposited!`);
+            return data.data;
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Deposit failed';
+            toast.error(msg);
+            throw err;
+        }
     };
 
     // ─── Wallet: Transaction History ───
