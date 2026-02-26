@@ -30,6 +30,17 @@ const PORT = process.env.PORT || 3000;
 // SECURITY MIDDLEWARE (applied globally)
 // ═══════════════════════════════════════════
 
+// 0. HTTPS redirect in production
+if (process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+        if (req.headers['x-forwarded-proto'] !== 'https') {
+            return res.redirect(301, `https://${req.hostname}${req.originalUrl}`);
+        }
+        next();
+    });
+    app.set('trust proxy', 1);
+}
+
 // 1. Helmet — security headers (CSP, X-Frame-Options, HSTS, etc.)
 app.use(
     helmet({
@@ -66,10 +77,21 @@ app.use((req, res, next) => {
     next();
 });
 
-// 3. CORS
+// 3. CORS — locked to frontend origin only
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:5173', 'http://localhost:5174'];
+
 app.use(
     cors({
-        origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+        origin: (origin, callback) => {
+            // Allow requests with no origin (mobile apps, curl, Postman)
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Blocked by CORS'));
+            }
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Request-ID', 'X-Device-ID'],
@@ -95,11 +117,13 @@ app.use(requestLogger);
 // 9. General rate limiter
 app.use(generalLimiter);
 
-// 10. CSRF protection (applied to state-changing routes)
+// 10. CSRF protection (applied to all state-changing routes)
 // Skipped in development for SPA compatibility
 if (process.env.NODE_ENV === 'production') {
     app.use('/api/auth', csrfProtection);
     app.use('/api/admin', csrfProtection);
+    app.use('/api/wallet', csrfProtection);
+    app.use('/api/profile', csrfProtection);
 }
 
 // 11. Passport initialization (no sessions — JWT only)
