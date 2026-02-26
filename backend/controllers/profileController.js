@@ -22,7 +22,6 @@ const getProfile = async (req, res) => {
             email: user.email,
             name: user.name,
             role: user.role,
-            twoFactorEnabled: user.twoFactorEnabled,
             createdAt: user.createdAt,
         };
 

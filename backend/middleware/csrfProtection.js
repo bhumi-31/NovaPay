@@ -24,7 +24,7 @@ const generateCsrfToken = (req, res) => {
 
     res.cookie(CSRF_COOKIE, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Hackathon mode: allow over HTTP for local testing
         sameSite: 'strict',
         maxAge: 60 * 60 * 1000, // 1 hour
         path: '/',

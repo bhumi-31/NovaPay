@@ -20,7 +20,7 @@ router.use(authenticate);
 // ─── User Routes ───
 router.get('/balance', getBalance);
 router.post('/transfer', generalLimiter, validate(transferSchema), transfer);
-router.post('/deposit', validate(depositSchema), deposit);
+router.post('/deposit', generalLimiter, validate(depositSchema), deposit);
 router.get('/transactions', getTransactions);
 
 // ─── Admin Routes ───

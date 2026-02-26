@@ -48,11 +48,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     // ─── Login ───
-    const login = async (email, password, twoFactorCode = null) => {
+    const login = async (email, password) => {
         setLoading(true);
         try {
             const body = { email, password };
-            if (twoFactorCode) body.twoFactorCode = twoFactorCode;
 
             const { data } = await api.post('/auth/login', body);
             localStorage.setItem('accessToken', data.data.accessToken);
@@ -61,11 +60,6 @@ export const AuthProvider = ({ children }) => {
             return data;
         } catch (err) {
             const msg = err.response?.data?.message || 'Login failed';
-            const requires2FA = err.response?.data?.requires2FA;
-            if (requires2FA) {
-                toast('2FA code required', { icon: '📱' });
-                throw { requires2FA: true };
-            }
             toast.error(msg);
             throw err;
         } finally {
@@ -97,20 +91,6 @@ export const AuthProvider = ({ children }) => {
             return null;
         }
     }, []);
-
-    // ─── Setup 2FA ───
-    const setup2FA = async () => {
-        const { data } = await api.post('/auth/2fa/setup');
-        return data.data;
-    };
-
-    // ─── Verify 2FA ───
-    const verify2FA = async (code) => {
-        const { data } = await api.post('/auth/2fa/verify', { code });
-        await fetchProfile();
-        toast.success('2FA enabled successfully!');
-        return data;
-    };
 
     // ─── Wallet: Get Balance ───
     const getBalance = async () => {
@@ -180,8 +160,6 @@ export const AuthProvider = ({ children }) => {
                 login,
                 logout,
                 fetchProfile,
-                setup2FA,
-                verify2FA,
                 getBalance,
                 transferMoney,
                 depositMoney,

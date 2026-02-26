@@ -118,13 +118,11 @@ app.use(requestLogger);
 app.use(generalLimiter);
 
 // 10. CSRF protection (applied to all state-changing routes)
-// Skipped in development for SPA compatibility
-if (process.env.NODE_ENV === 'production') {
-    app.use('/api/auth', csrfProtection);
-    app.use('/api/admin', csrfProtection);
-    app.use('/api/wallet', csrfProtection);
-    app.use('/api/profile', csrfProtection);
-}
+// Hackathon Defense: Enforced globally, not just in production
+app.use('/api/auth', csrfProtection);
+app.use('/api/admin', csrfProtection);
+app.use('/api/wallet', csrfProtection);
+app.use('/api/profile', csrfProtection);
 
 // 11. Passport initialization (no sessions — JWT only)
 configurePassport();

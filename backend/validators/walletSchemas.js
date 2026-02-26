@@ -15,10 +15,10 @@ const transferSchema = Joi.object({
 });
 
 const depositSchema = Joi.object({
-    amount: Joi.number().positive().precision(2).min(1).max(10000).required().messages({
+    amount: Joi.number().positive().precision(2).min(1).max(500).required().messages({
         'number.positive': 'Amount must be positive',
         'number.min': 'Minimum deposit is $1.00',
-        'number.max': 'Maximum deposit is $10,000',
+        'number.max': 'Maximum deposit is $500',
         'any.required': 'Amount is required',
     }),
 });

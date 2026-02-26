@@ -83,13 +83,6 @@ export default function Dashboard() {
                         <span className="stat-value">{wallet ? formatAmount(wallet.totalReceived) : '$0.00'}</span>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon security">🛡️</div>
-                    <div>
-                        <span className="stat-label">Security</span>
-                        <span className="stat-value">{user?.twoFactorEnabled ? '2FA On' : '2FA Off'}</span>
-                    </div>
-                </div>
             </div>
 
             {/* Recent Transactions */}
@@ -140,10 +133,6 @@ export default function Dashboard() {
                 <Link to="/send" className="action-card">
                     <span className="action-icon">💸</span>
                     <span>Send Money</span>
-                </Link>
-                <Link to="/security" className="action-card">
-                    <span className="action-icon">🔐</span>
-                    <span>Security</span>
                 </Link>
                 <Link to="/transactions" className="action-card">
                     <span className="action-icon">📊</span>

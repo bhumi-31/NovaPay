@@ -55,29 +55,4 @@ const authLimiter = rateLimit({
     keyGenerator: (req) => `${req.ip}:${req.path}`,
 });
 
-/**
- * 2FA rate limiter — very strict
- * 5 requests per 15 minutes per IP
- */
-const twoFactorLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        message: 'Too many 2FA attempts — please wait before trying again',
-    },
-    handler: (req, res, next, options) => {
-        logger.warn(
-            {
-                ip: req.ip,
-                action: '2fa_rate_limit_exceeded',
-            },
-            '2FA rate limit exceeded'
-        );
-        res.status(options.statusCode).json(options.message);
-    },
-});
-
-module.exports = { generalLimiter, authLimiter, twoFactorLimiter };
+module.exports = { generalLimiter, authLimiter };

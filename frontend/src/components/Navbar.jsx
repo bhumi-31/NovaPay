@@ -43,7 +43,6 @@ export default function Navbar() {
                         <Link to="/dashboard" className="nav-link">Dashboard</Link>
                         <Link to="/send" className="nav-link">Send</Link>
                         <Link to="/transactions" className="nav-link">History</Link>
-                        <Link to="/security" className="nav-link">Security</Link>
                         {isAdmin && <Link to="/admin" className="nav-link nav-admin">Admin</Link>}
                         <div className="nav-user-section">
                             <span className="nav-avatar">{user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}</span>

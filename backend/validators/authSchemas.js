@@ -28,14 +28,6 @@ const loginSchema = Joi.object({
     password: Joi.string().required().messages({
         'any.required': 'Password is required',
     }),
-    twoFactorCode: Joi.string()
-        .length(6)
-        .pattern(/^\d{6}$/)
-        .optional()
-        .messages({
-            'string.length': '2FA code must be 6 digits',
-            'string.pattern.base': '2FA code must contain only digits',
-        }),
 });
 
 const refreshSchema = Joi.object({
@@ -44,17 +36,6 @@ const refreshSchema = Joi.object({
     }),
 });
 
-const twoFactorVerifySchema = Joi.object({
-    code: Joi.string()
-        .length(6)
-        .pattern(/^\d{6}$/)
-        .required()
-        .messages({
-            'string.length': '2FA code must be 6 digits',
-            'string.pattern.base': '2FA code must contain only digits',
-            'any.required': '2FA code is required',
-        }),
-});
 
 const forceLogoutSchema = Joi.object({
     userId: Joi.string().required().messages({
@@ -66,6 +47,5 @@ module.exports = {
     registerSchema,
     loginSchema,
     refreshSchema,
-    twoFactorVerifySchema,
     forceLogoutSchema,
 };

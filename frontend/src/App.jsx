@@ -9,7 +9,6 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import SendMoney from './pages/SendMoney';
 import Transactions from './pages/Transactions';
-import Security from './pages/Security';
 import Admin from './pages/Admin';
 
 function GuestRoute({ children }) {
@@ -28,7 +27,6 @@ function AppRoutes() {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/send" element={<ProtectedRoute><SendMoney /></ProtectedRoute>} />
         <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-        <Route path="/security" element={<ProtectedRoute><Security /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

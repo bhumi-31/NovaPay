@@ -36,10 +36,6 @@ const userSchema = new mongoose.Schema(
             unique: true,
         },
 
-        // ─── Two-Factor Authentication ───
-        twoFactorSecret: { type: String, select: false },
-        twoFactorEnabled: { type: Boolean, default: false },
-
         // ─── Account Lockout ───
         failedLoginAttempts: { type: Number, default: 0 },
         lockUntil: { type: Date, default: null },
@@ -55,7 +51,6 @@ const userSchema = new mongoose.Schema(
                 delete ret._id;
                 delete ret.__v;
                 delete ret.password;
-                delete ret.twoFactorSecret;
                 return ret;
             },
         },

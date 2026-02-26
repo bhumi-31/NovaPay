@@ -86,7 +86,6 @@ export default function Admin() {
                                 <th>Email</th>
                                 <th>Name</th>
                                 <th>Role</th>
-                                <th>2FA</th>
                                 <th>Failed Logins</th>
                                 <th>Joined</th>
                                 <th>Action</th>
@@ -100,11 +99,6 @@ export default function Admin() {
                                     <td>
                                         <span className={`badge ${u.role === 'admin' ? 'badge-warning' : 'badge-info'}`}>
                                             {u.role}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={`badge ${u.twoFactorEnabled ? 'badge-success' : 'badge-danger'}`}>
-                                            {u.twoFactorEnabled ? 'On' : 'Off'}
                                         </span>
                                     </td>
                                     <td>{u.failedLoginAttempts || 0}</td>

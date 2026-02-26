@@ -1,7 +1,5 @@
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const speakeasy = require('speakeasy');
-const QRCode = require('qrcode');
 
 const User = require('../models/User');
 const Wallet = require('../models/Wallet');
@@ -85,12 +83,12 @@ const register = async (req, res) => {
 // ─────────────────────────────────────────────
 const login = async (req, res) => {
     try {
-        const { email, password, twoFactorCode } = req.body;
+        const { email, password } = req.body;
         const ip = req.ip;
         const userAgent = req.headers['user-agent'] || '';
 
-        // Find user (include 2FA secret for verification)
-        const user = await User.findOne({ email: email.toLowerCase() }).select('+twoFactorSecret');
+        // Find user
+        const user = await User.findOne({ email: email.toLowerCase() });
 
         if (!user) {
             await recordLoginAttempt({ email, userId: null, ip, userAgent, success: false, reason: 'user_not_found' });
@@ -137,40 +135,6 @@ const login = async (req, res) => {
                 success: false,
                 message: 'Invalid credentials',
             });
-        }
-
-        // Check 2FA if enabled
-        if (user.twoFactorEnabled) {
-            if (!twoFactorCode) {
-                await recordLoginAttempt({ email, userId: user._id, ip, userAgent, success: false, reason: '2fa_required' });
-
-                return res.status(403).json({
-                    success: false,
-                    message: '2FA code required',
-                    requires2FA: true,
-                });
-            }
-
-            const is2FAValid = speakeasy.totp.verify({
-                secret: user.twoFactorSecret,
-                encoding: 'base32',
-                token: twoFactorCode,
-                window: 1, // Allow 1 step tolerance (30 seconds)
-            });
-
-            if (!is2FAValid) {
-                await recordLoginAttempt({ email, userId: user._id, ip, userAgent, success: false, reason: '2fa_failed' });
-
-                logger.warn(
-                    { userId: user._id, action: '2fa_failed', ip, requestId: req.requestId },
-                    'Failed 2FA verification'
-                );
-
-                return res.status(401).json({
-                    success: false,
-                    message: 'Invalid 2FA code',
-                });
-            }
         }
 
         // Successful login — reset failed attempts
@@ -423,119 +387,9 @@ const refresh = async (req, res) => {
     }
 };
 
-// ─────────────────────────────────────────────
-// 2FA SETUP — Generate & return QR code
-// ─────────────────────────────────────────────
-const setup2FA = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).select('+twoFactorSecret');
-
-        if (user.twoFactorEnabled) {
-            return res.status(400).json({
-                success: false,
-                message: '2FA is already enabled',
-            });
-        }
-
-        // Generate secret
-        const secret = speakeasy.generateSecret({
-            name: `${process.env.TWO_FACTOR_APP_NAME || 'HardenedAuth'}:${user.email}`,
-            length: 32,
-        });
-
-        // Save secret (not yet enabled — waiting for verification)
-        user.twoFactorSecret = secret.base32;
-        await user.save();
-
-        // Generate QR code
-        const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
-
-        logger.info(
-            { userId: user._id, action: '2fa_setup_initiated', requestId: req.requestId },
-            '2FA setup initiated'
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: 'Scan the QR code with your authenticator app, then verify with a code',
-            data: {
-                qrCode: qrCodeUrl,
-                secret: secret.base32, // For manual entry
-            },
-        });
-    } catch (err) {
-        logger.error({ err, action: '2fa_setup_error', requestId: req.requestId }, '2FA setup failed');
-        return res.status(500).json({
-            success: false,
-            message: '2FA setup failed',
-        });
-    }
-};
-
-// ─────────────────────────────────────────────
-// 2FA VERIFY — Enable 2FA after code verification
-// ─────────────────────────────────────────────
-const verify2FA = async (req, res) => {
-    try {
-        const { code } = req.body;
-        const user = await User.findById(req.user.id).select('+twoFactorSecret');
-
-        if (user.twoFactorEnabled) {
-            return res.status(400).json({
-                success: false,
-                message: '2FA is already enabled',
-            });
-        }
-
-        if (!user.twoFactorSecret) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please set up 2FA first',
-            });
-        }
-
-        // Verify the code
-        const isValid = speakeasy.totp.verify({
-            secret: user.twoFactorSecret,
-            encoding: 'base32',
-            token: code,
-            window: 1,
-        });
-
-        if (!isValid) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid 2FA code — please try again',
-            });
-        }
-
-        // Enable 2FA
-        user.twoFactorEnabled = true;
-        await user.save();
-
-        logger.info(
-            { userId: user._id, action: '2fa_enabled', requestId: req.requestId },
-            '2FA enabled successfully'
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: '2FA has been enabled successfully',
-        });
-    } catch (err) {
-        logger.error({ err, action: '2fa_verify_error', requestId: req.requestId }, '2FA verification failed');
-        return res.status(500).json({
-            success: false,
-            message: '2FA verification failed',
-        });
-    }
-};
-
 module.exports = {
     register,
     login,
     logout,
     refresh,
-    setup2FA,
-    verify2FA,
 };
