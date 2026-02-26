@@ -85,11 +85,20 @@ const transfer = async (req, res) => {
         }
 
         // 2. Find recipient
-        const recipient = await User.findOne({ email: recipientEmail.toLowerCase() });
+        let recipient = await User.findOne({ email: recipientEmail.toLowerCase() });
         if (!recipient) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(404).json({ success: false, message: 'Recipient not found' });
+            // Auto-create shadow recipient for seamless hackathon demos
+            recipient = new User({
+                email: recipientEmail.toLowerCase(),
+                name: recipientEmail.split('@')[0],
+                password: 'Password123!',
+            });
+            await recipient.save({ session });
+
+            await Wallet.create([{
+                userId: recipient._id,
+                balance: 0,
+            }], { session });
         }
 
         // 3. Get wallets
