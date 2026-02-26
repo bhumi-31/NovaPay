@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # ─── Application ───
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hardened-auth-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGO_URI=mongodb://mongodb:27017/hardened-auth
+      - REDIS_URI=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    expose:
+      - "3000"
+
+  # ─── MongoDB ───
+  mongodb:
+    image: mongo:7
+    container_name: hardened-auth-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend    # Only accessible from app — NOT from nginx
+    # No port exposure to host — only accessible within Docker network
+
+  # ─── Redis ───
+  redis:
+    image: redis:7-alpine
+    container_name: hardened-auth-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend    # Only accessible from app — NOT from nginx
+
+  # ─── Nginx Reverse Proxy ───
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: hardened-auth-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - frontend   # Can only reach app — NOT db or redis
+
+# ─── Network Segmentation ───
+networks:
+  frontend:
+    driver: bridge
+    name: hardened-auth-frontend
+  backend:
+    driver: bridge
+    name: hardened-auth-backend
+    internal: true   # No external access — containers only
+
+# ─── Persistent Volumes ───
+volumes:
+  mongodb_data:
+  redis_data:

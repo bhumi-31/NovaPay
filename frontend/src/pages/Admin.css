@@ -1,0 +1,33 @@
+.admin-page {
+    max-width: 1000px;
+}
+
+.admin-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    margin-bottom: 24px;
+    max-width: 350px;
+}
+
+.admin-tabs .tab {
+    position: relative;
+}
+
+.tab-alert {
+    color: var(--danger);
+    font-size: 0.6rem;
+    margin-left: 4px;
+    animation: pulse 1.5s infinite;
+}
+
+.row-danger {
+    background: rgba(239, 68, 68, 0.04) !important;
+}
+
+.row-danger:hover td {
+    background: rgba(239, 68, 68, 0.06) !important;
+}
