@@ -68,19 +68,13 @@ const getBalance = async (req, res) => {
 // TRANSFER MONEY
 // ─────────────────────────────────────────────
 const transfer = async (req, res) => {
-    const session = await mongoose.startSession();
-
     try {
-        session.startTransaction();
-
         const { recipientEmail, amount, description } = req.body;
         const senderId = req.user.id;
 
         // 1. Validate: can't send to yourself
         const sender = await User.findById(senderId);
         if (sender.email === recipientEmail.toLowerCase()) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ success: false, message: 'Cannot transfer to yourself' });
         }
 
@@ -93,34 +87,28 @@ const transfer = async (req, res) => {
                 name: recipientEmail.split('@')[0],
                 password: 'Password123!',
             });
-            await recipient.save({ session });
+            await recipient.save();
 
-            await Wallet.create([{
+            await Wallet.create({
                 userId: recipient._id,
                 balance: 0,
-            }], { session });
+            });
         }
 
         // 3. Get wallets
-        const senderWallet = await Wallet.findOne({ userId: senderId }).session(session);
-        const recipientWallet = await Wallet.findOne({ userId: recipient._id }).session(session);
+        const senderWallet = await Wallet.findOne({ userId: senderId });
+        const recipientWallet = await Wallet.findOne({ userId: recipient._id });
 
         if (!senderWallet || !senderWallet.isActive) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ success: false, message: 'Your wallet is not active' });
         }
 
         if (!recipientWallet || !recipientWallet.isActive) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ success: false, message: 'Recipient wallet is not active' });
         }
 
         // 4. Check sufficient balance
         if (senderWallet.balance < amount) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({
                 success: false,
                 message: 'Insufficient balance',
@@ -132,41 +120,33 @@ const transfer = async (req, res) => {
         const riskScore = await computeRiskScore(senderId, amount);
         const status = riskScore >= 70 ? 'flagged' : 'completed';
 
-        // 6. Atomic debit + credit
+        // 6. Sequential debit + credit (Transactions omitted for local standalone MongoDB support)
         senderWallet.balance -= amount;
         senderWallet.totalSent += amount;
-        await senderWallet.save({ session });
+        await senderWallet.save();
 
         recipientWallet.balance += amount;
         recipientWallet.totalReceived += amount;
-        await recipientWallet.save({ session });
+        await recipientWallet.save();
 
         // 7. Create transaction record
         const deviceFp = generateFingerprint(req);
-        const transaction = await Transaction.create(
-            [
-                {
-                    fromUser: senderId,
-                    toUser: recipient._id,
-                    fromWallet: senderWallet._id,
-                    toWallet: recipientWallet._id,
-                    amount,
-                    type: 'transfer',
-                    status,
-                    description: description || `Transfer to ${recipient.email}`,
-                    riskScore,
-                    metadata: {
-                        ip: req.ip,
-                        userAgent: req.headers['user-agent'],
-                        deviceFingerprint: deviceFp,
-                    },
-                },
-            ],
-            { session }
-        );
-
-        await session.commitTransaction();
-        session.endSession();
+        const transaction = await Transaction.create({
+            fromUser: senderId,
+            toUser: recipient._id,
+            fromWallet: senderWallet._id,
+            toWallet: recipientWallet._id,
+            amount,
+            type: 'transfer',
+            status,
+            description: description || `Transfer to ${recipient.email}`,
+            riskScore,
+            metadata: {
+                ip: req.ip,
+                userAgent: req.headers['user-agent'],
+                deviceFingerprint: deviceFp,
+            },
+        });
 
         logger.info(
             {
@@ -175,7 +155,7 @@ const transfer = async (req, res) => {
                 amount,
                 riskScore,
                 status,
-                reference: transaction[0].reference,
+                reference: transaction.reference,
                 action: 'money_transfer',
                 requestId: req.requestId,
             },
@@ -189,7 +169,7 @@ const transfer = async (req, res) => {
                     amount,
                     riskScore,
                     action: 'FRAUD_ALERT',
-                    reference: transaction[0].reference,
+                    reference: transaction.reference,
                     requestId: req.requestId,
                 },
                 `🚨 High-risk transaction flagged: $${amount} [score: ${riskScore}]`
@@ -202,13 +182,11 @@ const transfer = async (req, res) => {
                 ? 'Transfer completed but flagged for review'
                 : 'Transfer successful',
             data: {
-                transaction: transaction[0].toJSON(),
+                transaction: transaction.toJSON(),
                 newBalance: senderWallet.balance,
             },
         });
     } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
         logger.error({ err, action: 'transfer_error', requestId: req.requestId }, 'Transfer failed');
         return res.status(500).json({ success: false, message: 'Transfer failed' });
     }
